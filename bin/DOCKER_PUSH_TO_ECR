@@ -1,0 +1,22 @@
+# Docker Service Start
+service docker start
+sleep 1
+
+# AWS ECR LOGIN TOKEN
+aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+# REPO CREATE - IF NOT EXISTS
+aws ecr describe-repositories --repository-names ${CONTAINER_IMAGE} || aws ecr create-repository --repository-name ${CONTAINER_IMAGE}
+
+PUSH_IMAGE_PATH=${CONTAINER_REGISTRY}/${CONTAINER_IMAGE}
+LATEST=${PUSH_IMAGE_PATH}:latest
+CURRENT=${PUSH_IMAGE_PATH}:${CONTAINER_IMAGE_TAG}
+
+# Docker Cache Get
+docker pull ${LATEST} || true
+
+# Docker Build
+docker build --cache-from ${LATEST} --tag ${LATEST} --tag ${CURRENT} .
+
+docker push ${CURRENT}
+docker push ${LATEST}

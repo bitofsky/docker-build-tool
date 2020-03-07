@@ -1,16 +1,30 @@
-FROM ubuntu:18.04
+# Get AWS CLI v2 > curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip
+# Get kubectl > curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+# for now can not use awscli v2 in alpine linux
+# refer : https://github.com/aws/aws-cli/issues/4685 
 
-RUN apt-get update \
-    && apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - \
-    && add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
-    && apt-get update \
-    && apt-get install docker-ce docker-ce-cli unzip -y
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-    && unzip awscliv2.zip \
-    && ./aws/install
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl \
-    && chmod +x ./kubectl \
-    && mv ./kubectl /usr/local/bin/kubectl
+FROM docker:19.03-dind
 
-CMD [ "/bin/bash" ]
+WORKDIR /tool
+
+# awscli v2 install
+# COPY aws ./aws
+# RUN ./aws/install
+
+# awscli v1 install
+ENV AWSCLI_VERSION "1.18.16"
+RUN apk -v --no-cache --update add \
+    python \
+    py-pip \
+    groff \
+    less \
+    mailcap \
+    && \
+    pip --no-cache-dir install --upgrade awscli==${AWSCLI_VERSION} && \
+    apk -v --purge del py-pip && \
+    rm -rf /var/cache/apk/*
+
+ADD bin/* /usr/local/bin/
+RUN chmod 755 /usr/local/bin/*
+
+CMD /bin/sh
